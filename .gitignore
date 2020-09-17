@@ -1,0 +1,11 @@
+tools/._gen_label_kinetics.py
+tools/._gen_label_sthv1.py
+tools/._gen_label_sthv2.py
+tools/._kinetics_label_map.txt
+tools/._vid2img_kinetics.py
+tools/._vid2img_sthv2.py
+._.DS_Store
+._config.py
+._main.py
+._opts.py
+._test_models.py
