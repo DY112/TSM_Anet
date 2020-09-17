@@ -167,3 +167,4 @@ dmypy.json
 .pytype/
 
 # End of https://www.toptal.com/developers/gitignore/api/python,macos
+ops/__pycache__/transforms.cpython-36.pyc
