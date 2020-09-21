@@ -70,6 +70,7 @@ class TALDataSet(data.Dataset):
 
         self._prepare_data()  # Parse all existing action instances and Save it as a list of [vid_path, start_sec, end_sec, class] in self.instances
         print ('-'*20, 'Finish init.', '-'*20)
+        input("waiting for input...")
 
     def _load_image(self, directory, idx):
         if self.modality == 'RGB' or self.modality == 'RGBDiff':
@@ -152,6 +153,7 @@ class TALDataSet(data.Dataset):
 
                 for video_name in database:
                     path = os.path.join(self.root_path, video_name, '_jpegs.h5')
+                    fps = 30 #database[video_name]["fps"]
                     video_info = database[video_name]
                     for segment in video_info["annotations"]:
                         st = segment["segment"][0]
@@ -427,8 +429,23 @@ class TALDataSet(data.Dataset):
         if self.dataset in ('Anet', 'Thumos'):
             vid_pt, _, _ = torchvision.io.read_video(record.path, record.start_sec, record.end_sec, pts_unit='sec')  # vid, aud, info
             # vid_pt: Pytorch Tensor (t, h, w, c)
-        else: # from BBDB 6fps h5 file 
-            vid_pt = None
+        elif self.dataset is 'BBDB': # from BBDB 6fps h5 file
+            org_start_frame = record.start_sec * 30
+            org_end_frame = record.end_sec * 30
+
+            start_frame_6fps = org_start_frame // 6
+            end_frame_6fps = org_end_frame // 6
+            range_idx = range(start_frame_6fps, end_frame_6fps + 1)
+
+            h5_file = h5py.File(filename, 'r')
+            frames = []
+
+            for idx in range_idx:
+                img_byte = h5_file['jpegs'][idx]
+                frame = cv2.imdecode(img_byte, flags=cv2.IMREAD_COLOR)
+                frames.attatch(torch.from_numpy(frame))
+            
+            vid_pt = torch.stack(frames, dim=0)
 
         return vid_pt
 
