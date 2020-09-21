@@ -8,6 +8,8 @@ import torchvision
 
 import os
 import json
+import h5py
+import cv2
 import random
 
 import numpy as np
@@ -152,7 +154,7 @@ class TALDataSet(data.Dataset):
                 database = json_data['database']
 
                 for video_name in database:
-                    path = os.path.join(self.root_path, video_name, '_jpegs.h5')
+                    path = os.path.join(self.root_path, video_name + '_jpegs.h5')
                     fps = 30 #database[video_name]["fps"]
                     video_info = database[video_name]
                     for segment in video_info["annotations"]:
@@ -169,7 +171,7 @@ class TALDataSet(data.Dataset):
                 database = json_data["results"]
 
                 for video_name in database:
-                    path = os.path.join(self.root_path, 'v_' + video_name + '.mp4')
+                    path = os.path.join(self.root_path, video_name + '_jpegs.h5')
                     if os.path.exists(path) == False:
                         continue
                     
@@ -426,24 +428,24 @@ class TALDataSet(data.Dataset):
         # return self.get(record, segment_indices)
 
     def get_fr(self, record):
-        if self.dataset in ('Anet', 'Thumos'):
+        if self.dataset in ('ANet', 'Thumos'):
             vid_pt, _, _ = torchvision.io.read_video(record.path, record.start_sec, record.end_sec, pts_unit='sec')  # vid, aud, info
             # vid_pt: Pytorch Tensor (t, h, w, c)
         elif self.dataset is 'BBDB': # from BBDB 6fps h5 file
-            org_start_frame = record.start_sec * 30
-            org_end_frame = record.end_sec * 30
+            org_start_frame = int(record.start_sec * 30)
+            org_end_frame = int(record.end_sec * 30)
 
             start_frame_6fps = org_start_frame // 6
             end_frame_6fps = org_end_frame // 6
             range_idx = range(start_frame_6fps, end_frame_6fps + 1)
 
-            h5_file = h5py.File(filename, 'r')
+            h5_file = h5py.File(record.path, 'r')
             frames = []
 
             for idx in range_idx:
                 img_byte = h5_file['jpegs'][idx]
                 frame = cv2.imdecode(img_byte, flags=cv2.IMREAD_COLOR)
-                frames.attatch(torch.from_numpy(frame))
+                frames.append(torch.from_numpy(frame))
             
             vid_pt = torch.stack(frames, dim=0)
 
@@ -469,9 +471,24 @@ class TALDataSet(data.Dataset):
 if __name__ == '__main__':
     from transforms import *
 
-    # ANET_CLASSIDX = '/workspace/ActivityNet_200_1.3/anet_classidx.txt'
-    # ANET_ANNOTATION_FILE = '/workspace/ActivityNet_200_1.3/rl_annotation.json'
-    # ANET_VID_PATH = '/workspace/ActivityNet_200_1.3/videos/'
+    ANET_CLASSIDX = '/workspace/ActivityNet_200_1.3/anet_classidx.txt'
+    ANET_ANNOTATION_FILE = '/workspace/ActivityNet_200_1.3/annotation.json'
+    ANET_VID_PATH = '/workspace/ActivityNet_200_1.3/videos/'
+
+    anet_dataset = TALDataSet(ANET_VID_PATH, 
+                   {'classidx':ANET_CLASSIDX, 'annt_file':ANET_ANNOTATION_FILE, 'subset':"training"},
+                   'ANet', 
+                   num_segments=8,
+                   new_length=1,
+                   modality='RGB',
+                   random_shift=False,
+                   transform=torchvision.transforms.Compose([
+                       GroupScale(int(256)),
+                       GroupCenterCrop(224),
+                       Stack(roll=False),
+                       ToTorchFormatTensor(div=True),
+                       GroupNormalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+                   ]), dense_sample=False)
 
     BBDB_CLASSIDX = '/workspace/BBDB_6fps/bbdb_classidx.txt'
     BBDB_ANNOTATION_FILE = '/workspace/BBDB_6fps/bbdb.v0.9.with.inning.json'
