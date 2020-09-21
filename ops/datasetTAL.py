@@ -72,7 +72,6 @@ class TALDataSet(data.Dataset):
 
         self._prepare_data()  # Parse all existing action instances and Save it as a list of [vid_path, start_sec, end_sec, class] in self.instances
         print ('-'*20, 'Finish init.', '-'*20)
-        input("waiting for input...")
 
     def _load_image(self, directory, idx):
         if self.modality == 'RGB' or self.modality == 'RGBDiff':
@@ -509,7 +508,7 @@ if __name__ == '__main__':
                        GroupNormalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
                    ]), dense_sample=False)
 
-    for item in data.DataLoader(anet_dataset, batch_size=1, shuffle=True):
+    for item in data.DataLoader(bbdb_dataset, batch_size=1, shuffle=True):
         data, target = item
         print (data.size(), target)
         # print("video name: ", item['video_name'])
